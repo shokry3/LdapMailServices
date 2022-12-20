@@ -35,16 +35,7 @@ public class ServiceApi {
 		return "app.jsp";
 
 	}
-
-	// Test Script using PowerShellExecutor API : String script =
-	// "$pass=\")@$#893jofdLKJFDL\"|ConvertTo-SecureString -AsPlainText -Force ; if
-	// ($?) {$UserCredential = New-Object
-	// System.Management.Automation.PsCredential('ADF@itamana.net',$pass)} ; if ($?)
-	// {$Session = New-PSSession -ConfigurationName Microsoft.Exchange
-	// -ConnectionUri http://exg19-01.itamana.net/PowerShell/ -Credential
-	// $UserCredential -Authentication kerberos -AllowRedirection } ; if ($?)
-	// {Import-PSSession $Session -AllowClobber } ; if ($?) {Get-MailboxDatabase |
-	// ft name}";
+	
 
 	// Create New Domain User
 	@PostMapping("/mbox")
@@ -139,6 +130,7 @@ public class ServiceApi {
 	@PostMapping("/mdulist")
 	public ResponseEntity<String> modifyDmUsers(@RequestBody List<Request> requests) {
 		try {
+			Map<String, String> failUsers = new HashMap<String, String>();
 			System.out.println("1-Starting update domain users data with count  " + requests.size());
 			
 			ObjectMapper mapper = new ObjectMapper();
@@ -153,11 +145,15 @@ public class ServiceApi {
 					updatedCount++;
 				}else {
 					System.out.println("- User " + request.getUserCode() + " Modify Fail on AD: " + output);
+					failUsers.put("FailUser", request.getUserCode());
 				}
 			}
 			
 			if (updatedCount > 0) {
-				return ResponseEntity.ok().body("- Count " + updatedCount + " Users Successfully Modified on AD.");
+				String message = "{\"Result Message\":\"" + updatedCount + " Users Successfully Modified on AD from count "+ requests.size() + "\"}";
+				String failUsersStr = mapper.writeValueAsString(failUsers);
+				String json = message + failUsersStr;
+				return ResponseEntity.ok().body(json);
 			} else {
 				return ResponseEntity.internalServerError().body("** AD Users List Modify Fail: ");
 			}
@@ -205,6 +201,19 @@ public class ServiceApi {
 			ex.printStackTrace();
 			String json = mapper.writeValueAsString(resultList);
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(json);
+		}
+	}
+	
+	//Authenticat Windows User and get UserCode..
+	@PostMapping("/authuser")
+	public ResponseEntity<String> authUser(@RequestBody Request user) throws Exception {
+		System.out.println(user);
+		String result = null;
+		try {
+			result = LdabUtils.authWindowsUser(user.getDomainUser(), user.getDomainPwd());
+			return ResponseEntity.ok().body(result);
+		} catch (Exception ex) {ex.printStackTrace();
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(result);
 		}
 	}
 }

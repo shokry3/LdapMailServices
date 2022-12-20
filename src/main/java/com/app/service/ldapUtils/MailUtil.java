@@ -138,8 +138,8 @@ public class MailUtil {
         String htmlContent = htmlStart + htmlBody + htmlEnd;
         
         String from = "autocreation@alriyadh.gov.sa";
-        String to = "thammudeh@alriyadh.gov.sa;mbaju@alriyadh.gov.sa;MShehata@alriyadh.gov.sa;sameht@alriyadh.gov.sa;intranet.support@alriyadh.gov.sa;WQASSEM@alriyadh.gov.sa";
-        String cc = "aALkodede@alriyadh.gov.sa;fhamady@alriyadh.gov.sa";
+        String to = "mbaju@alriyadh.gov.sa;MShehata@alriyadh.gov.sa;intranet.support@alriyadh.gov.sa;WQASSEM@alriyadh.gov.sa;tswidan@alriyadh.gov.sa";
+        String cc = "thammudeh@alriyadh.gov.sa;fhamady@alriyadh.gov.sa;sameht@alriyadh.gov.sa;";
         String subject = "Auto Creation Mail Service";
         sendEmail(from,to,cc,subject,htmlContent,0,null,null);
     }

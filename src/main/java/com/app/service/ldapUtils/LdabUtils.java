@@ -1,8 +1,14 @@
 package com.app.service.ldapUtils;
 
 import java.security.SecureRandom;
+import java.sql.Timestamp;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.LinkedHashMap;
@@ -41,7 +47,7 @@ public class LdabUtils {
 		env.put("java.naming.ldap.factory.socket", CustomLdapSslSocketFactory.class.getName());
 		env.put(Context.SECURITY_PRINCIPAL, "ADF@itamana.net");
 		env.put(Context.SECURITY_CREDENTIALS, ")@$#893jofdLKJFDL");
-		env.put(Context.PROVIDER_URL, "ldap://amndc.itamana.net:636"); // 10.120.4.1:9389
+		env.put(Context.PROVIDER_URL, "ldap://amndc03.itamana.net:636"); // 10.120.4.1:9389
 		return env;
 	}
 	
@@ -56,7 +62,7 @@ public class LdabUtils {
             env.put(Context.SECURITY_AUTHENTICATION, "Simple");
             env.put(Context.SECURITY_PRINCIPAL, "ADF@itamana.net");
             env.put(Context.SECURITY_CREDENTIALS, ")@$#893jofdLKJFDL");
-            env.put(Context.PROVIDER_URL, "ldap://amndc.itamana.net:389");
+            env.put(Context.PROVIDER_URL, "ldap://amndc03.itamana.net:389");
             ctx = new InitialLdapContext(env, null);
             //Second - get user detail
             SearchControls constraints = new SearchControls();
@@ -88,12 +94,12 @@ public class LdabUtils {
             env.put(Context.SECURITY_AUTHENTICATION, "Simple");
             env.put(Context.SECURITY_PRINCIPAL, "ADF@itamana.net");
              env.put(Context.SECURITY_CREDENTIALS, ")@$#893jofdLKJFDL");
-            env.put(Context.PROVIDER_URL, "ldap://amndc.itamana.net:389");
+            env.put(Context.PROVIDER_URL, "ldap://amndc03.itamana.net:389");
             ctx = new InitialLdapContext(env, null);
             SearchControls constraints = new SearchControls();
             constraints.setSearchScope(SearchControls.SUBTREE_SCOPE);
             String[] attrIDs = {
-                "distinguishedName", "sn", "givenname", "mail", "userPrincipalName", "msExchVersion","department","company",
+                "distinguishedName", "sn", "givenname", "mail", "userPrincipalName", "msExchVersion","department","company","pwdLastSet",
                 "userAccountControl", "accountExpires", "physicalDeliveryOfficeName", "SamAccountName","mobile","title","manager"
             };
             constraints.setReturningAttributes(attrIDs);
@@ -120,6 +126,16 @@ public class LdabUtils {
                     resultList.put("company", company);
                     String manager = attrs.get("manager") == null ? "manager not exist" : (String) attrs.get("manager").get();
                     resultList.put("manager", manager);
+                    String pwdLastSet = attrs.get("pwdLastSet") == null ? null : (String) attrs.get("pwdLastSet").get();
+                    if(pwdLastSet != null && !pwdLastSet.isEmpty()) {
+                        DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+                        long fileTime = (Long.parseLong(pwdLastSet) / 10000L) - + 11644473600000L;  
+                        Date date=new Date(fileTime); 
+                        LocalDate resetDate = LocalDate.parse(df.format(date));
+                        LocalDate maxDate = resetDate.plusDays(90);
+                        resultList.put("pwdLastSet", resetDate.toString());
+                        resultList.put("maxPwdAge", maxDate.toString());
+                    }
                 }
                 return resultList;
             } else {
@@ -131,6 +147,50 @@ public class LdabUtils {
             resultList.put("outputMsg", "Server Error while find domain user.");
             System.out.println("Exception while find domain user " + userCode + " : "+ex.getMessage());
             //ex.printStackTrace();
+            return null;
+        }
+    }
+    
+    //Authenticat Windows User and get UserCode..
+    public static String authWindowsUser(String userName, String password) {
+        // String userCode = null;
+        LdapContext ctx = null;
+        try {
+            //First - connect
+            Hashtable env = new Hashtable();
+            env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
+            env.put(Context.SECURITY_AUTHENTICATION, "Simple");
+            //            env.put(Context.SECURITY_PRINCIPAL, "ADF@itamana.net");
+            //            env.put(Context.SECURITY_CREDENTIALS, ")@$#893jofdLKJFDL");
+            env.put(Context.SECURITY_PRINCIPAL, userName + "@itamana.net");
+            env.put(Context.SECURITY_CREDENTIALS, password);
+            env.put(Context.PROVIDER_URL, "ldap://amndc03.itamana.net:389");
+            ctx = new InitialLdapContext(env, null);
+            //Second - get user detail
+            SearchControls constraints = new SearchControls();
+            constraints.setSearchScope(SearchControls.SUBTREE_SCOPE);
+            String[] attrIDs = {
+                "distinguishedName", "sn", "givenname", "mail", "userPrincipalName", "msExchVersion",
+                "userAccountControl", "accountExpires", "physicalDeliveryOfficeName", "SamAccountName"
+            };
+            constraints.setReturningAttributes(attrIDs);
+            NamingEnumeration answer = ctx.search("DC=ITamana,DC=net", "SamAccountName=" + userName, constraints);
+            if (answer.hasMore()) {
+                Attributes attrs = ((SearchResult) answer.next()).getAttributes();
+                if (attrs != null && attrs.get("physicalDeliveryOfficeName") != null) {
+                    System.out.println("Windows USER EXIST & Authenticated....");
+                    String userCode = (String) attrs.get("physicalDeliveryOfficeName").get();
+                    return userCode;
+                }else{
+                    System.out.println("Windows " + userName + " Authentication Fail ....");
+                    return null;
+                }
+            } else {
+                System.out.println("Windows " + userName + " Authentication Fail ....");
+                return null;
+            }
+        } catch (Exception ex) {
+            System.out.println("Windows " + userName + " Authentication Fail ....");
             return null;
         }
     }
@@ -329,7 +389,7 @@ public class LdabUtils {
 				return null;
 			} catch (Exception ex) {
 				System.out.println("Problem modifing exist user on AD: " + ex.getMessage());
-				//ex.printStackTrace();
+				ex.printStackTrace();
 				return "Problem modifing exist user on AD: " + ex.getMessage();
 			}
 		}
@@ -354,6 +414,7 @@ public class LdabUtils {
                     Map<String, String> errEmpData = new LinkedHashMap<String, String>();
                     errEmpData.put("Employee Code", "" + userRow.getUserCode());
                     errEmpData.put("Employee Name", "" + userRow.getEnglishName());
+                    errEmpData.put("Page Code", "" + userRow.getPageCode());
                     errEmpData.put("Error Message", "It is not possible to create an existing user on Active directory");
                     errEmpData.put("Performed By", "Autocreation Service");
                     MailUtil.sendAdEmailError(errEmpData);
@@ -442,6 +503,7 @@ public class LdabUtils {
                 errEmpData.put("Employee Code", "" + userRow.getUserCode());
                 errEmpData.put("Employee Name", "" + userDataList.get("FullEnName"));
                 errEmpData.put("Error Message", errorTxt);
+                errEmpData.put("Page Code", "" + userRow.getPageCode());
                 errEmpData.put("Performed By", "Autocreation Service");
                 MailUtil.sendAdEmailError(errEmpData);
                 return resultList;
@@ -452,6 +514,7 @@ public class LdabUtils {
             errEmpData.put("Employee Code", "" + userRow.getUserCode());
             errEmpData.put("Employee Name", "" + userDataList.get("FullEnName"));
             errEmpData.put("Error Message", ex.getMessage());
+            errEmpData.put("Page Code", "" + userRow.getPageCode());
             errEmpData.put("Performed By", "Autocreation Service");
             MailUtil.sendAdEmailError(errEmpData);
             ex.printStackTrace();
@@ -484,6 +547,7 @@ public class LdabUtils {
         userDataList.put("DomainPwd", (String) userRow.getDomainPwd());
         userDataList.put("company", (String) userRow.getCompany());
         userDataList.put("manager", (String) userRow.getManager());
+        userDataList.put("PageCode", (String) userRow.getPageCode());
         return userDataList;
     }
 	

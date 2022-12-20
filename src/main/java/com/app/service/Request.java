@@ -22,6 +22,7 @@ public class Request {
 	    private String company;
 	    private String userAccounts; //if user has more UserCode (say 90000055, 9005578, 90005564 >> this is the same user)
 	    private String manager;
+	    private String pageCode;  //Client page code that sent the request
 	    
 		public String getDomainUser() {
 			return domainUser;
@@ -132,6 +133,12 @@ public class Request {
 			this.manager = manager;
 		}
 		
+		public String getPageCode() {
+			return pageCode;
+		}
+		public void setPageCode(String pageCode) {
+			this.pageCode = pageCode;
+		}
 		@Override
 		public String toString() {
 			return "Request [domainUser=" + domainUser + ", domainPwd=" + domainPwd + ", mailBox=" + mailBox
@@ -139,15 +146,8 @@ public class Request {
 					+ ", dirDesc=" + dirDesc + ", mobileNo=" + mobileNo + ", userCode=" + userCode
 					+ ", IdentificationNo=" + IdentificationNo + ", IdTypeCode=" + IdTypeCode + ", birthDateH="
 					+ birthDateH + ", jobTitle=" + jobTitle + ", company=" + company + ", userAccounts=" + userAccounts
-					+ ", manager=" + manager + ", getDomainUser()=" + getDomainUser() + ", getDomainPwd()="
-					+ getDomainPwd() + ", getMailBox()=" + getMailBox() + ", getEnglishName()=" + getEnglishName()
-					+ ", getArabicName()=" + getArabicName() + ", getDirCode()=" + getDirCode() + ", getDirDesc()="
-					+ getDirDesc() + ", getMobileNo()=" + getMobileNo() + ", getUserCode()=" + getUserCode()
-					+ ", getIdentificationNo()=" + getIdentificationNo() + ", getIdTypeCode()=" + getIdTypeCode()
-					+ ", getBirthDateH()=" + getBirthDateH() + ", getJobTitle()=" + getJobTitle() + ", getCompany()="
-					+ getCompany() + ", getUserAccounts()=" + getUserAccounts() + ", getManager()=" + getManager()
-					+ ", getClass()=" + getClass() + ", hashCode()=" + hashCode() + ", toString()=" + super.toString()
-					+ "]";
-		}	
+					+ ", manager=" + manager + ", pageCode=" + pageCode + "]";
+		}
+		
 		
 }
