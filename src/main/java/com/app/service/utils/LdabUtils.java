@@ -1,4 +1,4 @@
-package com.app.service.ldapUtils;
+package com.app.service.utils;
 
 import java.security.SecureRandom;
 import java.sql.Timestamp;
@@ -31,7 +31,7 @@ import javax.naming.ldap.LdapContext;
 
 import org.json.JSONObject;
 
-import com.app.service.Request;
+import com.app.service.pojo.Request;
 import com.app.service.security.CustomLdapSslSocketFactory;
 import com.github.frimtec.libraries.jpse.PowerShellExecutor;
 

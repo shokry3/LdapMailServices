@@ -1,4 +1,4 @@
-package com.app.service.ldapUtils;
+package com.app.service.utils;
 
 import java.io.IOException;
 
@@ -26,7 +26,7 @@ public class MailUtil {
        //sendAmanaWelcome("MShehata");
     }
     
-    public static void sendEmail(String from, String to, String cc, String subject, String body, int authType, String username, String password){
+    public static String sendEmail(String from, String to, String cc, String subject, String body, int authType, String username, String password){
         String[] toArray = new String[0];
         String[] ccArray = new String[0];
         if(to != null){
@@ -95,9 +95,11 @@ public class MailUtil {
 
             // Send message
             Transport.send(message);
+            return "1";
 
         } catch (MessagingException e) {
-            throw new RuntimeException(e);
+        	System.out.println("E-Mail Send faile : " + e.getMessage());
+            return "-1";
         }
     }
 

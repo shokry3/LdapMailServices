@@ -1,4 +1,4 @@
-package com.app.service;
+package com.app.service.controller;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +14,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.app.service.ldapUtils.LdabUtils;
+import com.app.service.pojo.Request;
+import com.app.service.utils.LdabUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;

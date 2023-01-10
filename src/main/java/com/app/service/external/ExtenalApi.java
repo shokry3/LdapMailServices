@@ -1,11 +1,11 @@
-package com.app.service.api;
+package com.app.service.external;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.json.JSONObject;
 
-import com.app.service.ldapUtils.LdabUtils;
+import com.app.service.utils.LdabUtils;
 
 public class ExtenalApi {
 	
