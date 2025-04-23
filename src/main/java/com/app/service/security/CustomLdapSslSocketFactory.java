@@ -27,8 +27,9 @@ import javax.net.ssl.TrustManagerFactory;
 
 public class CustomLdapSslSocketFactory extends SSLSocketFactory
 {
+	private static final String CERT_FILE = "D:\\MyWork\\Amana\\Documents\\Security\\KMSSRV-CA.cer"; //Local PC (Shokry)
     //private static final String CERT_FILE = "/u02/oracle/config/domains/prdadf122/security/KMSSRV-CA.cer"; //UAT & Stage
-    private static final String CERT_FILE = "C:\\u01\\oracle\\config\\certification\\prdws12\\KMSSRV-CA.cer";  //Production
+    //private static final String CERT_FILE = "C:\\u01\\oracle\\config\\certification\\prdws12\\KMSSRV-CA.cer";  //Production
     private SSLSocketFactory sslSocketFactory;
     
     private static volatile CustomLdapSslSocketFactory singletonCustLdapSslSockFact;

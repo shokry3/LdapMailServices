@@ -33,6 +33,7 @@ import org.json.JSONObject;
 
 import com.app.service.pojo.Request;
 import com.app.service.security.CustomLdapSslSocketFactory;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.frimtec.libraries.jpse.PowerShellExecutor;
 
 public class LdabUtils {
@@ -99,8 +100,8 @@ public class LdabUtils {
             SearchControls constraints = new SearchControls();
             constraints.setSearchScope(SearchControls.SUBTREE_SCOPE);
             String[] attrIDs = {
-                "distinguishedName", "sn", "givenname", "mail", "userPrincipalName", "msExchVersion","department","company","pwdLastSet",
-                "userAccountControl", "accountExpires", "physicalDeliveryOfficeName", "SamAccountName","mobile","title","manager"
+                "distinguishedName", "sn", "givenname","DisplayName","Description", "mail", "userPrincipalName", "msExchVersion","department","company","manager",
+                "pwdLastSet", "userAccountControl", "accountExpires", "physicalDeliveryOfficeName", "SamAccountName","mobile","title","Enabled","lastlogon"
             };
             constraints.setReturningAttributes(attrIDs);
             NamingEnumeration answer =
@@ -113,11 +114,17 @@ public class LdabUtils {
                     String userDomain = (String) attrs.get("SamAccountName").get();
                     String mailBox = attrs.get("msExchVersion") == null ? "0" : "1";
                     resultList.put("SamAccountName", userDomain);
+                    resultList.put("User Name", (String)attrs.get("DisplayName").get());
+                    String Description = attrs.get("Description") == null ? "English Name not exist" : (String) attrs.get("Description").get();
+                    resultList.put("English Name", Description);
+                    String displayName = attrs.get("DisplayName") == null ? "DisplayName not exist" : (String) attrs.get("DisplayName").get();
+                    resultList.put("DisplayName", displayName);
                     resultList.put("mailExist", mailBox);
                     resultList.put("mailBox", (String)attrs.get("userPrincipalName").get());
                     resultList.put("entry", entry);
                     resultList.put("userDomain", userDomain);
-                    resultList.put("mobile", (String) attrs.get("mobile").get());
+                    String mobile = attrs.get("mobile") == null ? "mobile not exist" : (String) attrs.get("mobile").get();
+                    resultList.put("mobile", mobile);
                     String title = attrs.get("title") == null ? "title not exist" : (String) attrs.get("title").get();
                     resultList.put("title", title);
                     String department = attrs.get("department") == null ? "department not exist" : (String) attrs.get("department").get();
@@ -126,6 +133,16 @@ public class LdabUtils {
                     resultList.put("company", company);
                     String manager = attrs.get("manager") == null ? "manager not exist" : (String) attrs.get("manager").get();
                     resultList.put("manager", manager);
+                    
+                    String lastlogon = attrs.get("lastlogon") == null ? "lastlogon not exist" : (String) attrs.get("lastlogon").get();
+                    if(lastlogon != null && !lastlogon.isEmpty()) {
+                    	 DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+                         long loginTime = (Long.parseLong(lastlogon) / 10000L) - + 11644473600000L; 
+                         Date date=new Date(loginTime); 
+                         LocalDate finalDate = LocalDate.parse(df.format(date));
+                         resultList.put("lastlogon", finalDate.toString());
+                    }
+                    
                     String pwdLastSet = attrs.get("pwdLastSet") == null ? null : (String) attrs.get("pwdLastSet").get();
                     if(pwdLastSet != null && !pwdLastSet.isEmpty()) {
                         DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
@@ -136,10 +153,19 @@ public class LdabUtils {
                         resultList.put("pwdLastSet", resetDate.toString());
                         resultList.put("maxPwdAge", maxDate.toString());
                     }
+                    
+                    String accountControl = attrs.get("userAccountControl") == null ? null : (String) attrs.get("userAccountControl").get();
+                    if(accountControl != null && !accountControl.isEmpty()) {
+                    	if(accountControl.equals("512")) {
+                    		resultList.put("Enabled", "true");
+                    	}else {
+                    		resultList.put("Enabled", "false");
+                    	}
+                    }
                 }
                 return resultList;
             } else {
-            	resultList.put("outputMsg", "Domain user not exist.");
+            	resultList.put("outputMsg", "Domain user not exist!");
             	System.out.println("Domain user " + userCode + " not exist.");
                 return null;
             }
@@ -152,8 +178,9 @@ public class LdabUtils {
     }
     
     //Authenticat Windows User and get UserCode..
-    public static String authWindowsUser(String userName, String password) {
+    public static Map<String, Object> authWindowsUser(String userName, String password) {
         // String userCode = null;
+    	Map<String, Object> resultList = new HashMap<String, Object>();
         LdapContext ctx = null;
         try {
             //First - connect
@@ -178,21 +205,24 @@ public class LdabUtils {
             if (answer.hasMore()) {
                 Attributes attrs = ((SearchResult) answer.next()).getAttributes();
                 if (attrs != null && attrs.get("physicalDeliveryOfficeName") != null) {
-                    System.out.println("Windows USER EXIST & Authenticated....");
                     String userCode = (String) attrs.get("physicalDeliveryOfficeName").get();
-                    return userCode;
+                    resultList.put("status", true);
+                    resultList.put("userCode", userCode);
+                    resultList.put("message", "User authentication success.");
                 }else{
-                    System.out.println("Windows " + userName + " Authentication Fail ....");
-                    return null;
+                    resultList.put("status", false);
+                    resultList.put("message", "User authentication fail.");
                 }
             } else {
-                System.out.println("Windows " + userName + " Authentication Fail ....");
-                return null;
+                resultList.put("status", false);
+                resultList.put("message", "User authentication fail.");
             }
         } catch (Exception ex) {
-            System.out.println("Windows " + userName + " Authentication Fail ....");
-            return null;
+            System.out.println("Windows " + userName + " Authentication Exception :: "+ ex.getMessage());
+            resultList.put("status", false);
+            resultList.put("message", "User authentication fail.");
         }
+        return resultList;
     }
 	
     //-This method responsible for user domain creation.....
@@ -284,12 +314,18 @@ public class LdabUtils {
             ctx.modifyAttributes(entryDN, mods);   //commented just for test environment.......
             System.out.println("Set password & updated userccountControl");
             resultList.put("domainPwd", newRandomPwd);
+            
+            // Add new user to All Users group............
+            //addUserToGroup(userDomainName, "All Users");
+            
             // now create user mail box.......
-            String createMailBocxResult = createMailBocx(userDomainName, userDataList.get("EmailDb"));
-            if(createMailBocxResult != null) {
-            	resultList.put("createMailBocxOut", createMailBocxResult);
+            if(userDataList.get("createMailBox") == null || !userDataList.get("createMailBox").equals("0")) {
+            	String createMailBocxResult = createMailBocx(userDomainName, userDataList.get("EmailDb"));
+                if(createMailBocxResult != null) {
+                	resultList.put("createMailBocxOut", createMailBocxResult);
+                }
             }
-
+            
         } catch (Exception e) {
             System.out.println("Problem adding or modifing user on AD: " + e.getMessage());
             resultList.put("errorExist", "1");
@@ -355,8 +391,10 @@ public class LdabUtils {
 					attrList.put("department", datafields.get("dirDesc"));
 				if (datafields.get("mobileNo") != null && !datafields.get("mobileNo").isEmpty())
 					attrList.put("mobile", datafields.get("mobileNo"));
-				if (datafields.get("arabicName") != null && !datafields.get("arabicName").isEmpty())
+				if (datafields.get("arabicName") != null && !datafields.get("arabicName").isEmpty()) {
 					attrList.put("givenName", datafields.get("arabicName").toString().split(" ")[0]);
+					attrList.put("DisplayName", datafields.get("arabicName"));
+				}					
 				if (datafields.get("userCode") != null && !datafields.get("userCode").isEmpty())
 					attrList.put("physicalDeliveryOfficeName", datafields.get("userCode"));
 				if (datafields.get("jobTitle") != null && !datafields.get("jobTitle").isEmpty())
@@ -442,6 +480,7 @@ public class LdabUtils {
                         String entryPath = domainDataList.get("entry");
                         String slectedDomain = domainDataList.get("userDomain");
                         System.out.println("SlectedDomain: " + slectedDomain);
+                        userDataList.put("oldUserCode",userAccounts.get(i));
                         if (slectedDomain != null) {
                         	System.out.println("2- Modify an existing user to new UserCode");
                         	Map<String, String> attrList = new HashMap<String, String>();
@@ -527,6 +566,46 @@ public class LdabUtils {
 
     }
 	
+	
+	// -This method for user domain disable and Enable........................
+		public static String disableEnableUser(String userCode, int operation) throws Exception {
+			String entryPath = null;
+			int UF_ACCOUNT_ENABLE = 0x0001;
+			int UF_ACCOUNT_DISABLE = 0x0002;
+	        if(entryPath == null || entryPath.isEmpty()) {
+	    		Map<String, String> domainDataList = checkLdabUserCode(userCode);
+	            if(domainDataList != null && domainDataList.size() > 0){
+	                entryPath = domainDataList.get("entry");
+	            }
+	        }
+			
+			if (entryPath == null || entryPath.isEmpty()) {
+				throw new Exception("This user code dose not exist on Active Directory");
+				
+			} else {
+				DirContext ctx = null;
+				try {
+					
+					ModificationItem[] mods = new ModificationItem[1];
+					if(operation == 2) {
+					    mods[0] = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, new BasicAttribute("userAccountControl",Integer.toString(UF_ACCOUNT_DISABLE)));
+					}else {
+						mods[0] = new ModificationItem(DirContext.REPLACE_ATTRIBUTE, new BasicAttribute("userAccountControl",Integer.toString(UF_ACCOUNT_ENABLE)));
+					}
+					// Perform the update
+					if(mods != null && mods.length > 0) {
+						ctx = new InitialDirContext(getLdabEnv());
+						ctx.modifyAttributes(entryPath, mods);
+					}
+					return "Operation done successfully";
+				} catch (Exception ex) {
+					System.out.println("Problem modifing exist user on AD: " + ex.getMessage());
+					ex.printStackTrace();
+					return "Problem modifing exist user on AD: " + ex.getMessage();
+				}
+			}
+		}
+	
 	public static List<String> getUserAccounts(String userAccounts) {
 		List<String> accounts = new ArrayList<String>();
 		if(userAccounts != null && !userAccounts.isEmpty()) {	
@@ -548,12 +627,15 @@ public class LdabUtils {
         userDataList.put("company", (String) userRow.getCompany());
         userDataList.put("manager", (String) userRow.getManager());
         userDataList.put("PageCode", (String) userRow.getPageCode());
+        userDataList.put("createMailBox", (String) userRow.getCreateMailBox());
         return userDataList;
     }
 	
     public static void sendConfirmEmail(Map<String, String> userDataList, String domainUser, String createFlag){
         //Perpare Confirm Email Data.
         Map<String, String> empData = new LinkedHashMap<String, String>();
+        String to = null;
+        String cc = null;
         if(createFlag.equals("1")){
             empData.put("Employee Note", "New user created on Active Directory environment with the following details");
         }
@@ -562,6 +644,8 @@ public class LdabUtils {
         }
         if(createFlag.equals("3")){
             empData.put("Employee Note", "Create the MailBox only For Exist User " + userDataList.get("UserCode"));
+            to = "MShehata@alriyadh.gov.sa;tswidan@alriyadh.gov.sa";
+            cc = "sameht@alriyadh.gov.sa;";
         }
         empData.put("Employee Ar Name", "" + userDataList.get("UserName"));
         empData.put("Employee En Name", userDataList.get("FullEnName"));
@@ -573,7 +657,7 @@ public class LdabUtils {
         empData.put("Email Address", domainUser + "@alriyadh.gov.sa");
         empData.put("AD Database", userDataList.get("EmailDb"));
         empData.put("Performed By", "Autocreation Service");
-        MailUtil.sendAdAutocreationEmail(empData);
+        MailUtil.sendAdAutocreationEmail(empData, to, cc);
     }
 	
     public static String checkUserDomain(String fullEnglishName) throws Exception {
@@ -692,30 +776,91 @@ public class LdabUtils {
     }
 	
 	 public static String generateRandomPassword() {
-	        String CHAR_LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
-	        String DIGIT = "0123456789";
-	        String OTHER_SYMBOL = "!@";
-	        String strLowerCase = generateRandomString(CHAR_LOWERCASE, 4);
-	        String strDigit = generateRandomString(DIGIT, 4);
-	        String pwdString = strLowerCase + OTHER_SYMBOL + strDigit;
-	        return (pwdString.substring(0, 1).toUpperCase() + pwdString.substring(1));
-	    }
+        String CHAR_LOWERCASE = "abcdefghijklmnopqrstuvwxyz";
+        String DIGIT = "0123456789";
+        String OTHER_SYMBOL = "!@";
+        String strLowerCase = generateRandomString(CHAR_LOWERCASE, 4);
+        String strDigit = generateRandomString(DIGIT, 4);
+        String pwdString = strLowerCase + OTHER_SYMBOL + strDigit;
+        return (pwdString.substring(0, 1).toUpperCase() + pwdString.substring(1));
+    }
 	    
 	 // generate a random char[], based on `input`
-	    private static String generateRandomString(String input, int size) {
+    private static String generateRandomString(String input, int size) {
 
-	        if (input == null || input.length() <= 0)
-	            throw new IllegalArgumentException("Invalid input.");
-	        if (size < 1)
-	            throw new IllegalArgumentException("Invalid size.");
+        if (input == null || input.length() <= 0)
+            throw new IllegalArgumentException("Invalid input.");
+        if (size < 1)
+            throw new IllegalArgumentException("Invalid size.");
 
-	        StringBuilder result = new StringBuilder(size);
-	        for (int i = 0; i < size; i++) {
-	            // produce a random order
-	            int index = random.nextInt(input.length());
-	            result.append(input.charAt(index));
-	        }
-	        return result.toString();
-	    }
+        StringBuilder result = new StringBuilder(size);
+        for (int i = 0; i < size; i++) {
+            // produce a random order
+            int index = random.nextInt(input.length());
+            result.append(input.charAt(index));
+        }
+        return result.toString();
+    }
+    
+    //Add user to active directory Group.
+    public static String addUserToGroup(String domainUser, String groupId) {
+    	String output = null;
+    	String script = "$pass=\")@$#893jofdLKJFDL\"|ConvertTo-SecureString -AsPlainText -Force;$UserCredential = New-Object   System.Management.Automation.PsCredential('ADF@itamana.net',$pass);"
+    			+ "Add-ADGroupMember -Identity \""+groupId+"\" -Members \""+domainUser+"\" -Server:amndc03 -Credential $UserCredential;";
+		System.out.println("Add user :: " + domainUser +" to group: " + groupId);
+		try {
+			if (domainUser != null & groupId != null) {
+				PowerShellExecutor executor = PowerShellExecutor.instance();
+				System.out.println("PowerShell runtime version " + executor.version()
+						.orElseThrow(() -> new RuntimeException("No PowerShell runtime available")));
+				output = executor.execute(script).getStandardOutput();
+				System.out.println("Add-ADGroupMember output = " + output);
+			}
+			return "Users added to groups successfully";
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			return "Add-ADGroupMember Found Exception: " + ex.getMessage();
+		}
+    }
+    
+    //Remove user from active directory Group.
+    public static String removeUserFromGroup(String domainUser, String groupId) {
+    	String output = null;
+    	String script = "$pass=\")@$#893jofdLKJFDL\"|ConvertTo-SecureString -AsPlainText -Force;$UserCredential = New-Object   System.Management.Automation.PsCredential('ADF@itamana.net',$pass);"
+    			+ "remove-ADGroupMember -Identity  \""+groupId+"\" -Members \""+domainUser+"\" -Server:amndc03 -Confirm:$false -Credential $UserCredential;";
+		System.out.println("user ::   " + domainUser +" removed from group: " + groupId);
+		try {
+			if (domainUser != null & groupId != null) {
+				PowerShellExecutor executor = PowerShellExecutor.instance();
+				System.out.println("PowerShell runtime version " + executor.version()
+						.orElseThrow(() -> new RuntimeException("No PowerShell runtime available")));
+				output = executor.execute(script).getStandardOutput();
+				System.out.println("remove-ADGroupMember output = " + output);
+			}
+			return "Users removed from groups successfully";
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			return "remove-ADGroupMember Found Exception: " + ex.getMessage();
+		}
+    }
+    
+  //Get domain user active directory groups.
+    public static String getDomainUserGroups(String domainUser) {
+    	String output = null;
+    	String script = "(Get-ADUser -Identity \""+domainUser+"\" -Server:amndc03 -Properties displayname,office,samaccountname, MemberOf ).MemberOf | Get-ADGroup -Properties name |Select-Object -Property name";
+		try {
+				PowerShellExecutor executor = PowerShellExecutor.instance();
+				System.out.println("PowerShell runtime version " + executor.version()
+						.orElseThrow(() -> new RuntimeException("No PowerShell runtime available")));
+				output = executor.execute(script).getStandardOutput();
+				System.out.println("getDomainUserGroups output = " + output);
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+		return output;
+    }
 
 }

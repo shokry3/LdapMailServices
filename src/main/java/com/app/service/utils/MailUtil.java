@@ -68,7 +68,12 @@ public class MailUtil {
             MimeMessage message = new MimeMessage(session);
 
             // Set From: header field of the header.
-            message.setFrom(new InternetAddress(from));
+            if(from.split(",").length > 1) {
+            	message.setFrom(new InternetAddress(from.split(",")[0],from.split(",")[1]));
+            }else {
+            	message.setFrom(new InternetAddress(from));
+            }
+            
 
             // Set Email: RecipientType.To
             for(int i = 0; i<toArray.length;i++){
@@ -97,14 +102,15 @@ public class MailUtil {
             Transport.send(message);
             return "1";
 
-        } catch (MessagingException e) {
+        } catch (Exception e) {
+        	e.printStackTrace();
         	System.out.println("E-Mail Send faile : " + e.getMessage());
             return "-1";
         }
     }
 
     
-    public static void sendAdAutocreationEmail(Map<String, String> empData){
+    public static void sendAdAutocreationEmail(Map<String, String> empData ,String to, String cc){
         String htmlStart = "<!DOCTYPE html>\n" + 
         "<html>\n" + 
         "<head>\n" + 
@@ -140,8 +146,13 @@ public class MailUtil {
         String htmlContent = htmlStart + htmlBody + htmlEnd;
         
         String from = "autocreation@alriyadh.gov.sa";
-        String to = "mbaju@alriyadh.gov.sa;MShehata@alriyadh.gov.sa;intranet.support@alriyadh.gov.sa;WQASSEM@alriyadh.gov.sa;tswidan@alriyadh.gov.sa";
-        String cc = "thammudeh@alriyadh.gov.sa;fhamady@alriyadh.gov.sa;sameht@alriyadh.gov.sa;";
+        if(to == null || to.isEmpty()) {
+        	to = "mbaju@alriyadh.gov.sa;MShehata@alriyadh.gov.sa;intranet.support@alriyadh.gov.sa;WQASSEM@alriyadh.gov.sa;tswidan@alriyadh.gov.sa";
+        }
+        if(cc == null || cc.isEmpty()) {
+        	cc = "thammudeh@alriyadh.gov.sa;fhamady@alriyadh.gov.sa;nalaskar@alriyadh.gov.sa;sameht@alriyadh.gov.sa;";
+        }
+        
         String subject = "Auto Creation Mail Service";
         sendEmail(from,to,cc,subject,htmlContent,0,null,null);
     }

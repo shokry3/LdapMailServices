@@ -23,6 +23,7 @@ public class Request {
 	    private String userAccounts; //if user has more UserCode (say 90000055, 9005578, 90005564 >> this is the same user)
 	    private String manager;
 	    private String pageCode;  //Client page code that sent the request
+	    private String createMailBox = "1";  //Create only the domain without mialbox.
 	    
 		public String getDomainUser() {
 			return domainUser;
@@ -139,6 +140,14 @@ public class Request {
 		public void setPageCode(String pageCode) {
 			this.pageCode = pageCode;
 		}
+		
+		public String getCreateMailBox() {
+			return createMailBox;
+		}
+		public void setCreateMailBox(String createMailBox) {
+			this.createMailBox = createMailBox;
+		}
+		
 		@Override
 		public String toString() {
 			return "Request [domainUser=" + domainUser + ", domainPwd=" + domainPwd + ", mailBox=" + mailBox
@@ -146,8 +155,19 @@ public class Request {
 					+ ", dirDesc=" + dirDesc + ", mobileNo=" + mobileNo + ", userCode=" + userCode
 					+ ", IdentificationNo=" + IdentificationNo + ", IdTypeCode=" + IdTypeCode + ", birthDateH="
 					+ birthDateH + ", jobTitle=" + jobTitle + ", company=" + company + ", userAccounts=" + userAccounts
-					+ ", manager=" + manager + ", pageCode=" + pageCode + "]";
+					+ ", manager=" + manager + ", pageCode=" + pageCode + ", createMail=" + createMailBox
+					+ ", getDomainUser()=" + getDomainUser() + ", getDomainPwd()=" + getDomainPwd() + ", getMailBox()="
+					+ getMailBox() + ", getEnglishName()=" + getEnglishName() + ", getArabicName()=" + getArabicName()
+					+ ", getDirCode()=" + getDirCode() + ", getDirDesc()=" + getDirDesc() + ", getMobileNo()="
+					+ getMobileNo() + ", getUserCode()=" + getUserCode() + ", getIdentificationNo()="
+					+ getIdentificationNo() + ", getIdTypeCode()=" + getIdTypeCode() + ", getBirthDateH()="
+					+ getBirthDateH() + ", getJobTitle()=" + getJobTitle() + ", getCompany()=" + getCompany()
+					+ ", getUserAccounts()=" + getUserAccounts() + ", getManager()=" + getManager() + ", getPageCode()="
+					+ getPageCode() + ", getCreateMailBox()=" + getCreateMailBox() + ", getClass()=" + getClass()
+					+ ", hashCode()=" + hashCode() + ", toString()=" + super.toString() + "]";
 		}
+		
+		
 		
 		
 }
